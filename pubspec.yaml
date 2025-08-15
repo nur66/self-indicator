@@ -1,0 +1,23 @@
+name: self_indicator
+description: A Flutter application for self indicator assessment with form and dashboard.
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  fl_chart: ^0.64.0
+  shared_preferences: ^2.2.2
+  provider: ^6.1.1
+  intl: ^0.18.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

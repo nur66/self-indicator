@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/indicator_provider.dart';
-import 'form_screen.dart';
+import 'category_menu_screen.dart';
 import 'dashboard_screen.dart';
 import 'indicator_list_screen.dart';
 
@@ -16,6 +16,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
+    const CategoryMenuScreen(),
     const DashboardScreen(),
     const IndicatorListScreen(),
   ];
@@ -41,6 +42,10 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         items: const [
           BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Menu Utama',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
             label: 'Dashboard',
           ),
@@ -49,15 +54,6 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Daftar Indicator',
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const FormScreen()),
-          );
-        },
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

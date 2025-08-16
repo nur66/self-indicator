@@ -40,6 +40,13 @@ class _FormScreenState extends State<FormScreen> {
 
   final List<String> _locations = ['Mesjid', 'Rumah'];
   final List<String> _states = ['Berjamaah', 'Sendiri'];
+  final List<String> _prayerTypes = [
+    'Sholat Subuh',
+    'Sholat Dzuhur/Jum\'at', 
+    'Sholat Ashar',
+    'Sholat Magrib',
+    'Sholat Isya'
+  ];
 
   @override
   void initState() {
@@ -69,41 +76,58 @@ class _FormScreenState extends State<FormScreen> {
     totalScore += _selectedState == 'Berjamaah' ? 3 : 1;
 
     // 3. Skor Ketepatan Waktu
-    if (_targetTime != null && _selectedTime != null) {
-      final targetMinutes = _targetTime!.hour * 60 + _targetTime!.minute;
-      final actualMinutes = _selectedTime!.hour * 60 + _selectedTime!.minute;
-      final diffMinutes = actualMinutes - targetMinutes;
-
-      if (diffMinutes <= 0) {
-        totalScore += 5; // Tepat waktu atau lebih awal
-      } else if (diffMinutes <= 10) {
-        totalScore += 4; // 1-10 menit terlambat
-      } else if (diffMinutes <= 15) {
-        totalScore += 3; // 11-15 menit terlambat
-      } else if (diffMinutes <= 30) {
-        totalScore += 2; // 16-30 menit terlambat
+    if (_selectedCategory == 'Prayer') {
+      // For Prayer category, _selectedTime is both target and actual time
+      // So we give full score (5) since it's considered on time
+      if (_selectedTime != null) {
+        totalScore += 5; // Prayer recorded = on time
       } else {
-        totalScore += 1; // Lebih dari 30 menit terlambat
+        totalScore += 3; // Default if time not set
       }
     } else {
-      totalScore += 3; // Default nilai jika waktu tidak diset
+      // For other categories, use target vs actual time comparison
+      if (_targetTime != null && _selectedTime != null) {
+        final targetMinutes = _targetTime!.hour * 60 + _targetTime!.minute;
+        final actualMinutes = _selectedTime!.hour * 60 + _selectedTime!.minute;
+        final diffMinutes = actualMinutes - targetMinutes;
+
+        if (diffMinutes <= 0) {
+          totalScore += 5; // Tepat waktu atau lebih awal
+        } else if (diffMinutes <= 15) {
+          totalScore += 4; // 1-15 menit terlambat
+        } else if (diffMinutes <= 20) {
+          totalScore += 3; // 16-20 menit terlambat
+        } else if (diffMinutes <= 30) {
+          totalScore += 2; // 21-30 menit terlambat
+        } else {
+          totalScore += 1; // Lebih dari 30 menit terlambat
+        }
+      } else {
+        totalScore += 3; // Default nilai jika waktu tidak diset
+      }
     }
 
     return totalScore.clamp(1, 10); // Pastikan skor antara 1-10
   }
 
   int _getTimeScore() {
+    if (_selectedCategory == 'Prayer') {
+      // For Prayer category, just having a time recorded means it's on time
+      return _selectedTime != null ? 5 : 3;
+    }
+    
     if (_targetTime == null || _selectedTime == null) return 3;
     
     final targetMinutes = _targetTime!.hour * 60 + _targetTime!.minute;
     final actualMinutes = _selectedTime!.hour * 60 + _selectedTime!.minute;
     final diffMinutes = actualMinutes - targetMinutes;
 
-    if (diffMinutes <= 0) return 5;
-    if (diffMinutes <= 10) return 4;
-    if (diffMinutes <= 15) return 3;
-    if (diffMinutes <= 30) return 2;
-    return 1;
+    // Updated logic for prayer timing
+    if (diffMinutes <= 0) return 5; // Tepat waktu atau lebih awal
+    if (diffMinutes <= 15) return 4; // 1-15 menit terlambat
+    if (diffMinutes <= 20) return 3; // 16-20 menit terlambat  
+    if (diffMinutes <= 30) return 2; // 21-30 menit terlambat
+    return 1; // Lebih dari 30 menit terlambat
   }
 
   void _submitForm() {
@@ -117,7 +141,7 @@ class _FormScreenState extends State<FormScreen> {
         score: finalScore,
         date: DateTime.now(),
         category: _selectedCategory,
-        customDate: _useCustomDateTime ? _selectedDate : null,
+        customDate: (_selectedCategory == 'Prayer' || _useCustomDateTime) ? _selectedDate : null,
         customTime: _selectedTime != null ? _selectedTime!.format(context) : null,
         targetTime: _targetTime != null ? _targetTime!.format(context) : null,
         scoreRules: _useAutoScoring ? {
@@ -205,24 +229,54 @@ class _FormScreenState extends State<FormScreen> {
                   title: 'Informasi Dasar',
                   icon: Icons.info_outline,
                   children: [
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: InputDecoration(
-                        labelText: 'Judul Indicator',
-                        prefixIcon: const Icon(Icons.title),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Judul tidak boleh kosong';
-                        }
-                        return null;
-                      },
-                    ),
+                    _selectedCategory == 'Prayer' 
+                        ? DropdownButtonFormField<String>(
+                            value: _titleController.text.isEmpty ? null : _titleController.text,
+                            decoration: InputDecoration(
+                              labelText: 'Pilih Sholat',
+                              prefixIcon: const Icon(Icons.mosque),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            items: _prayerTypes.map((prayer) {
+                              return DropdownMenuItem(
+                                value: prayer,
+                                child: Text(prayer),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _titleController.text = value ?? '';
+                              });
+                            },
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Pilih jenis sholat';
+                              }
+                              return null;
+                            },
+                          )
+                        : TextFormField(
+                            controller: _titleController,
+                            decoration: InputDecoration(
+                              labelText: 'Judul Indicator',
+                              prefixIcon: const Icon(Icons.title),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Judul tidak boleh kosong';
+                              }
+                              return null;
+                            },
+                          ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _descriptionController,
@@ -284,95 +338,165 @@ class _FormScreenState extends State<FormScreen> {
                 ),
                 const SizedBox(height: 24),
                 
-                // Date Time Settings
+                // Prayer Time or Date Time Settings  
                 _buildFormCard(
-                  title: 'Pengaturan Waktu',
-                  icon: Icons.schedule,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: SwitchListTile(
-                        title: const Text('Gunakan Tanggal & Waktu Khusus'),
-                        subtitle: const Text('Set tanggal dan waktu tertentu'),
-                        value: _useCustomDateTime,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            _useCustomDateTime = value;
-                          });
-                        },
-                      ),
-                    ),
-                    if (_useCustomDateTime) ...[
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                final date = await showDatePicker(
-                                  context: context,
-                                  initialDate: _selectedDate ?? DateTime.now(),
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime(2030),
-                                );
-                                if (date != null) {
-                                  setState(() {
-                                    _selectedDate = date;
-                                  });
-                                }
-                              },
-                              icon: const Icon(Icons.calendar_today),
-                              label: Text(
-                                _selectedDate != null
-                                    ? DateFormat('dd/MM/yyyy').format(_selectedDate!)
-                                    : 'Pilih Tanggal',
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                  title: _selectedCategory == 'Prayer' ? 'Waktu Sholat' : 'Pengaturan Waktu',
+                  icon: _selectedCategory == 'Prayer' ? Icons.mosque : Icons.schedule,
+                  children: _selectedCategory == 'Prayer' 
+                      ? [
+                          // Prayer time selection - always show date and time
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    final date = await showDatePicker(
+                                      context: context,
+                                      initialDate: _selectedDate ?? DateTime.now(),
+                                      firstDate: DateTime(2020),
+                                      lastDate: DateTime(2030),
+                                    );
+                                    if (date != null) {
+                                      setState(() {
+                                        _selectedDate = date;
+                                      });
+                                    }
+                                  },
+                                  icon: const Icon(Icons.calendar_today),
+                                  label: Text(
+                                    _selectedDate != null
+                                        ? DateFormat('dd/MM/yyyy').format(_selectedDate!)
+                                        : 'Pilih Tanggal',
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.indigo.shade100,
+                                    foregroundColor: Colors.indigo.shade700,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                final time = await showTimePicker(
-                                  context: context,
-                                  initialTime: _selectedTime ?? TimeOfDay.now(),
-                                );
-                                if (time != null) {
-                                  setState(() {
-                                    _selectedTime = time;
-                                  });
-                                }
-                              },
-                              icon: const Icon(Icons.access_time),
-                              label: Text(
-                                _selectedTime != null
-                                    ? _selectedTime!.format(context)
-                                    : 'Pilih Waktu',
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    final time = await showTimePicker(
+                                      context: context,
+                                      initialTime: _selectedTime ?? TimeOfDay.now(),
+                                    );
+                                    if (time != null) {
+                                      setState(() {
+                                        _selectedTime = time;
+                                      });
+                                    }
+                                  },
+                                  icon: const Icon(Icons.access_time),
+                                  label: Text(
+                                    _selectedTime != null
+                                        ? _selectedTime!.format(context)
+                                        : 'Pilih Waktu',
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.indigo.shade100,
+                                    foregroundColor: Colors.indigo.shade700,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
                                 ),
                               ),
+                            ],
+                          ),
+                        ]
+                      : [
+                          // Regular time settings for other categories
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: SwitchListTile(
+                              title: const Text('Gunakan Tanggal & Waktu Khusus'),
+                              subtitle: const Text('Set tanggal dan waktu tertentu'),
+                              value: _useCustomDateTime,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              onChanged: (value) {
+                                setState(() {
+                                  _useCustomDateTime = value;
+                                });
+                              },
                             ),
                           ),
+                          if (_useCustomDateTime) ...[
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      final date = await showDatePicker(
+                                        context: context,
+                                        initialDate: _selectedDate ?? DateTime.now(),
+                                        firstDate: DateTime(2020),
+                                        lastDate: DateTime(2030),
+                                      );
+                                      if (date != null) {
+                                        setState(() {
+                                          _selectedDate = date;
+                                        });
+                                      }
+                                    },
+                                    icon: const Icon(Icons.calendar_today),
+                                    label: Text(
+                                      _selectedDate != null
+                                          ? DateFormat('dd/MM/yyyy').format(_selectedDate!)
+                                          : 'Pilih Tanggal',
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      final time = await showTimePicker(
+                                        context: context,
+                                        initialTime: _selectedTime ?? TimeOfDay.now(),
+                                      );
+                                      if (time != null) {
+                                        setState(() {
+                                          _selectedTime = time;
+                                        });
+                                      }
+                                    },
+                                    icon: const Icon(Icons.access_time),
+                                    label: Text(
+                                      _selectedTime != null
+                                          ? _selectedTime!.format(context)
+                                          : 'Pilih Waktu',
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
-                      ),
-                    ],
-                  ],
                 ),
                 const SizedBox(height: 24),
                 
@@ -586,79 +710,80 @@ class _FormScreenState extends State<FormScreen> {
                         ),
                       ),
                       
-                      const SizedBox(height: 12),
-                      
-                      // Target Waktu
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.orange.shade200),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.access_alarm, color: Colors.orange.shade600, size: 20),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Waktu Dikerjakan',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const Spacer(),
-                                if (_targetTime != null && _selectedTime != null)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange.shade100,
-                                      borderRadius: BorderRadius.circular(12),
+                      // Target Waktu - Hidden for Prayer category
+                      if (_selectedCategory != 'Prayer') ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.orange.shade200),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.access_alarm, color: Colors.orange.shade600, size: 20),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Waktu Dikerjakan',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
                                     ),
-                                    child: Text(
-                                      '+${_getTimeScore()} poin',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.orange.shade700,
+                                  ),
+                                  const Spacer(),
+                                  if (_targetTime != null && _selectedTime != null)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '+${_getTimeScore()} poin',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.orange.shade700,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            ElevatedButton.icon(
-                              onPressed: () async {
-                                final time = await showTimePicker(
-                                  context: context,
-                                  initialTime: _targetTime ?? const TimeOfDay(hour: 5, minute: 0),
-                                );
-                                if (time != null) {
-                                  setState(() {
-                                    _targetTime = time;
-                                  });
-                                }
-                              },
-                              icon: const Icon(Icons.access_alarm),
-                              label: Text(
-                                _targetTime != null
-                                    ? 'Target: ${_targetTime!.format(context)}'
-                                    : 'Set Waktu Dikerjakan',
+                                ],
                               ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange.shade100,
-                                foregroundColor: Colors.orange.shade700,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                              const SizedBox(height: 8),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  final time = await showTimePicker(
+                                    context: context,
+                                    initialTime: _targetTime ?? const TimeOfDay(hour: 5, minute: 0),
+                                  );
+                                  if (time != null) {
+                                    setState(() {
+                                      _targetTime = time;
+                                    });
+                                  }
+                                },
+                                icon: const Icon(Icons.access_alarm),
+                                label: Text(
+                                  _targetTime != null
+                                      ? 'Target: ${_targetTime!.format(context)}'
+                                      : 'Set Waktu Dikerjakan',
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange.shade100,
+                                  foregroundColor: Colors.orange.shade700,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                       
                       const SizedBox(height: 12),
                       
@@ -688,11 +813,15 @@ class _FormScreenState extends State<FormScreen> {
                               ],
                             ),
                             const SizedBox(height: 8),
-                            const Text(
-                              '📍 Lokasi: Mesjid (+2), Rumah (+0)\n'
-                              '👥 Keadaan: Berjamaah (+3), Sendiri (+1)\n'
-                              '⏰ Waktu: Tepat (+5), <10 menit (+4), 11-15 menit (+3), 16-30 menit (+2), >30 menit (+1)',
-                              style: TextStyle(fontSize: 12, height: 1.4),
+                            Text(
+                              _selectedCategory == 'Prayer' 
+                                  ? '📍 Lokasi: Mesjid (+2), Rumah (+0)\n'
+                                    '👥 Keadaan: Berjamaah (+3), Sendiri (+1)\n'
+                                    '⏰ Waktu: Tepat (+5), 1-15 menit (+4), 16-20 menit (+3), 21-30 menit (+2), >30 menit (+1)'
+                                  : '📍 Lokasi: Mesjid (+2), Rumah (+0)\n'
+                                    '👥 Keadaan: Berjamaah (+3), Sendiri (+1)\n'
+                                    '⏰ Waktu: Tepat (+5), 1-15 menit (+4), 16-20 menit (+3), 21-30 menit (+2), >30 menit (+1)',
+                              style: const TextStyle(fontSize: 12, height: 1.4),
                             ),
                           ],
                         ),

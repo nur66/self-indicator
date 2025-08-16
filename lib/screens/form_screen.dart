@@ -5,7 +5,9 @@ import '../models/indicator_model.dart';
 import '../providers/indicator_provider.dart';
 
 class FormScreen extends StatefulWidget {
-  const FormScreen({super.key});
+  final String? preSelectedCategory;
+  
+  const FormScreen({super.key, this.preSelectedCategory});
 
   @override
   State<FormScreen> createState() => _FormScreenState();
@@ -16,7 +18,7 @@ class _FormScreenState extends State<FormScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _targetTimeController = TextEditingController();
-  String _selectedCategory = 'Personal';
+  late String _selectedCategory;
   int _score = 5;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
@@ -38,6 +40,12 @@ class _FormScreenState extends State<FormScreen> {
 
   final List<String> _locations = ['Mesjid', 'Rumah'];
   final List<String> _states = ['Berjamaah', 'Sendiri'];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategory = widget.preSelectedCategory ?? 'Personal';
+  }
 
   @override
   void dispose() {
@@ -138,7 +146,9 @@ class _FormScreenState extends State<FormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tambah Indicator'),
+        title: Text(widget.preSelectedCategory != null 
+            ? 'Tambah Indicator ${widget.preSelectedCategory}'
+            : 'Tambah Indicator'),
         backgroundColor: Colors.blue.shade100,
       ),
       body: Container(
@@ -593,7 +603,7 @@ class _FormScreenState extends State<FormScreen> {
                                 Icon(Icons.access_alarm, color: Colors.orange.shade600, size: 20),
                                 const SizedBox(width: 8),
                                 const Text(
-                                  'Waktu Target',
+                                  'Waktu Dikerjakan',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
@@ -635,7 +645,7 @@ class _FormScreenState extends State<FormScreen> {
                               label: Text(
                                 _targetTime != null
                                     ? 'Target: ${_targetTime!.format(context)}'
-                                    : 'Set Target Waktu',
+                                    : 'Set Waktu Dikerjakan',
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.orange.shade100,

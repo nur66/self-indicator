@@ -3,7 +3,8 @@
     "allow": [
       "Bash(mkdir:*)",
       "WebFetch(domain:docs.flutter.dev)",
-      "Bash(flutter:*)"
+      "Bash(flutter:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

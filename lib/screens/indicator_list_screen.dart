@@ -5,13 +5,17 @@ import '../providers/indicator_provider.dart';
 import '../models/indicator_model.dart';
 
 class IndicatorListScreen extends StatelessWidget {
-  const IndicatorListScreen({super.key});
+  final String? categoryFilter;
+  
+  const IndicatorListScreen({super.key, this.categoryFilter});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Daftar Indicator'),
+        title: Text(categoryFilter != null 
+            ? 'Indicator $categoryFilter'
+            : 'Daftar Indicator'),
         backgroundColor: Colors.blue.shade100,
       ),
       body: Consumer<IndicatorProvider>(
@@ -20,21 +24,27 @@ class IndicatorListScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (provider.indicators.isEmpty) {
-            return const Center(
+          final filteredIndicators = categoryFilter != null
+              ? provider.indicators.where((indicator) => indicator.category == categoryFilter).toList()
+              : provider.indicators;
+
+          if (filteredIndicators.isEmpty) {
+            return Center(
               child: Text(
-                'Belum ada indicator.\nTambahkan indicator dengan menekan tombol +',
+                categoryFilter != null
+                    ? 'Belum ada indicator untuk kategori $categoryFilter.\nTambahkan indicator dengan menekan tombol +'
+                    : 'Belum ada indicator.\nTambahkan indicator dengan menekan tombol +',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16),
+                style: const TextStyle(fontSize: 16),
               ),
             );
           }
 
           return ListView.builder(
             padding: const EdgeInsets.all(8),
-            itemCount: provider.indicators.length,
+            itemCount: filteredIndicators.length,
             itemBuilder: (context, index) {
-              final indicator = provider.indicators[index];
+              final indicator = filteredIndicators[index];
               return _buildIndicatorCard(context, indicator, provider);
             },
           );

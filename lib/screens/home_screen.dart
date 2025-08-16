@@ -4,7 +4,6 @@ import '../providers/indicator_provider.dart';
 import 'form_screen.dart';
 import 'dashboard_screen.dart';
 import 'indicator_list_screen.dart';
-import 'quick_log_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,7 +16,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
-    const QuickLogScreen(),
     const DashboardScreen(),
     const IndicatorListScreen(),
   ];
@@ -27,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<IndicatorProvider>().loadIndicators();
-      context.read<IndicatorProvider>().loadTemplates();
     });
   }
 
@@ -42,19 +39,14 @@ class _HomeScreenState extends State<HomeScreen> {
             _currentIndex = index;
           });
         },
-        type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.checklist),
-            label: 'Quick Log',
-          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
             label: 'Dashboard',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.list),
-            label: 'Daftar',
+            label: 'Daftar Indicator',
           ),
         ],
       ),

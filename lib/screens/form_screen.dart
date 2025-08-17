@@ -23,6 +23,7 @@ class _FormScreenState extends State<FormScreen> {
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   TimeOfDay? _targetTime;
+  TimeOfDay? _executionTime; // Waktu dikerjakan untuk Prayer
   bool _useCustomDateTime = false;
   bool _useAutoScoring = false;
   String _selectedLocation = 'Mesjid';
@@ -77,10 +78,25 @@ class _FormScreenState extends State<FormScreen> {
 
     // 3. Skor Ketepatan Waktu
     if (_selectedCategory == 'Prayer') {
-      // For Prayer category, _selectedTime is both target and actual time
-      // So we give full score (5) since it's considered on time
-      if (_selectedTime != null) {
-        totalScore += 5; // Prayer recorded = on time
+      // For Prayer category, compare _executionTime with _selectedTime (prayer time)
+      if (_selectedTime != null && _executionTime != null) {
+        final prayerMinutes = _selectedTime!.hour * 60 + _selectedTime!.minute;
+        final executionMinutes = _executionTime!.hour * 60 + _executionTime!.minute;
+        final diffMinutes = executionMinutes - prayerMinutes;
+
+        if (diffMinutes <= 0) {
+          totalScore += 5; // Tepat waktu atau lebih awal
+        } else if (diffMinutes <= 10) {
+          totalScore += 4; // 1-10 menit terlambat
+        } else if (diffMinutes <= 15) {
+          totalScore += 3; // 11-15 menit terlambat
+        } else if (diffMinutes <= 25) {
+          totalScore += 2; // 16-25 menit terlambat
+        } else if (diffMinutes <= 30) {
+          totalScore += 1; // 26-30 menit terlambat
+        } else {
+          totalScore += 1; // Lebih dari 30 menit (tetap 1)
+        }
       } else {
         totalScore += 3; // Default if time not set
       }
@@ -112,8 +128,19 @@ class _FormScreenState extends State<FormScreen> {
 
   int _getTimeScore() {
     if (_selectedCategory == 'Prayer') {
-      // For Prayer category, just having a time recorded means it's on time
-      return _selectedTime != null ? 5 : 3;
+      // For Prayer category, compare execution time with prayer time
+      if (_selectedTime != null && _executionTime != null) {
+        final prayerMinutes = _selectedTime!.hour * 60 + _selectedTime!.minute;
+        final executionMinutes = _executionTime!.hour * 60 + _executionTime!.minute;
+        final diffMinutes = executionMinutes - prayerMinutes;
+
+        if (diffMinutes <= 0) return 5; // Tepat waktu atau lebih awal
+        if (diffMinutes <= 10) return 4; // 1-10 menit terlambat
+        if (diffMinutes <= 15) return 3; // 11-15 menit terlambat
+        if (diffMinutes <= 25) return 2; // 16-25 menit terlambat
+        return 1; // 26+ menit terlambat
+      }
+      return 3; // Default if time not set
     }
     
     if (_targetTime == null || _selectedTime == null) return 3;
@@ -148,11 +175,13 @@ class _FormScreenState extends State<FormScreen> {
           'autoScoring': true,
           'targetTime': _targetTime != null ? _targetTime!.format(context) : null,
           'actualTime': _selectedTime != null ? _selectedTime!.format(context) : null,
+          'executionTime': _executionTime != null ? _executionTime!.format(context) : null,
           'location': _selectedLocation,
           'state': _selectedState,
           'calculatedScore': finalScore,
           'locationScore': _selectedLocation == 'Mesjid' ? 2 : 0,
           'stateScore': _selectedState == 'Berjamaah' ? 3 : 1,
+          'timeScore': _getTimeScore(),
         } : null,
       );
 
@@ -629,6 +658,81 @@ class _FormScreenState extends State<FormScreen> {
                         ),
                       ),
                       
+                      // Waktu Dikerjakan - Only for Prayer category
+                      if (_selectedCategory == 'Prayer') ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.purple.shade200),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.timer, color: Colors.purple.shade600, size: 20),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Waktu Dikerjakan',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  if (_selectedTime != null && _executionTime != null)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.purple.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '+${_getTimeScore()} poin',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.purple.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  final time = await showTimePicker(
+                                    context: context,
+                                    initialTime: _executionTime ?? TimeOfDay.now(),
+                                  );
+                                  if (time != null) {
+                                    setState(() {
+                                      _executionTime = time;
+                                    });
+                                  }
+                                },
+                                icon: const Icon(Icons.timer),
+                                label: Text(
+                                  _executionTime != null
+                                      ? 'Dikerjakan: ${_executionTime!.format(context)}'
+                                      : 'Set Waktu Dikerjakan',
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.purple.shade100,
+                                  foregroundColor: Colors.purple.shade700,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      
                       const SizedBox(height: 12),
                       
                       // Keadaan Selection
@@ -817,7 +921,7 @@ class _FormScreenState extends State<FormScreen> {
                               _selectedCategory == 'Prayer' 
                                   ? '📍 Lokasi: Mesjid (+2), Rumah (+0)\n'
                                     '👥 Keadaan: Berjamaah (+3), Sendiri (+1)\n'
-                                    '⏰ Waktu: Tepat (+5), 1-15 menit (+4), 16-20 menit (+3), 21-30 menit (+2), >30 menit (+1)'
+                                    '⏰ Waktu Dikerjakan: Tepat (+5), 1-10 menit (+4), 11-15 menit (+3), 16-25 menit (+2), >25 menit (+1)'
                                   : '📍 Lokasi: Mesjid (+2), Rumah (+0)\n'
                                     '👥 Keadaan: Berjamaah (+3), Sendiri (+1)\n'
                                     '⏰ Waktu: Tepat (+5), 1-15 menit (+4), 16-20 menit (+3), 21-30 menit (+2), >30 menit (+1)',
@@ -1011,7 +1115,7 @@ class _FormScreenState extends State<FormScreen> {
                                         Icon(Icons.access_time, color: Colors.orange.shade600, size: 16),
                                         const SizedBox(height: 4),
                                         Text(
-                                          'Waktu',
+                                          _selectedCategory == 'Prayer' ? 'Waktu Dikerjakan' : 'Waktu',
                                           style: TextStyle(fontSize: 10, color: Colors.orange.shade700),
                                         ),
                                         Text(
